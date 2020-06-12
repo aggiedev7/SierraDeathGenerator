@@ -1,0 +1,26 @@
+{
+  "name": "sierradeathgenerator",
+  "version": "1.0.0",
+  "description": "The Death Generator\r =============================",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "canvas": "^2.6.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/foone/SierraDeathGenerator.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/foone/SierraDeathGenerator/issues"
+  },
+  "homepage": "https://github.com/foone/SierraDeathGenerator#readme"
+}

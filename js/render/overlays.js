@@ -1,3 +1,5 @@
+const { first } = require('./util')
+
 function resetOverlays(fontInfo){
     overlayNames = []
     if('overlays' in fontInfo) {
@@ -5,8 +7,6 @@ function resetOverlays(fontInfo){
         for (key in overlays) {
             if (overlays.hasOwnProperty(key)) {
                 overlayNames.push(key)
-                var overlay = overlay[key]
-
             }
         }
     }
@@ -28,7 +28,7 @@ function parseOverlays(fontInfo, overlayNames, options){
 					"value": options['sliderAmount']
 				}
 			}else{
-				var sname = options[oname]
+				var sname = oname in options ? options[oname] : currentOverlay['default']
 				var adv=currentOverlay.options[sname]
 
 				overlays[oname] = {
@@ -54,7 +54,7 @@ function parseOverlays(fontInfo, overlayNames, options){
 	return overlays
 }
 
-function drawOverlays(context, fontImage, overlays, overlayOverrides, stage){
+function drawOverlays(context, fontImage, overlays, overlayOverrides, scale, stage){
     Object.keys(overlays).forEach(function (key) {
         var adv = overlays[key]
         if(adv.stage == stage){

@@ -1,9 +1,10 @@
 const { first } = require('./util')
 const { FontManager } = require('./FontManager')
-const { drawOverlays, parseOverlays } = require('./overlays')
+const { drawOverlays, parseOverlays, resetOverlays } = require('./overlays')
 
 function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = true, wordwrap_dryrun=false, wordwrap=true){
 	overlayOverrides={}
+	overlayNames= resetOverlays(fontInfo)
 	const context = canvas.getContext('2d')
 	if(fontInfo == null || baseImage == null){
 		return
@@ -47,7 +48,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	}
 	var originx = first(fontInfo.origin.x, 0)
 
-	var overlays = parseOverlays(fontInfo)
+	var overlays = parseOverlays(fontInfo, overlayNames, {})
 
 	//var rawtext = document.querySelector("textarea#sourcetext").value
 
@@ -113,7 +114,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	context.clearRect(0, 0, canvas.width, canvas.height)
 	context.drawImage(baseImage, 0, 0, baseImage.width*scale, baseImage.height*scale)
 	
-	drawOverlays(context, fontImage, overlays, overlayOverrides, 'pre-border')
+	drawOverlays(context, fontImage, overlays, overlayOverrides, scale, 'pre-border')
 
 	if('border' in fontInfo) {
 		var bw=outputSize.w,bh=outputSize.h
@@ -134,7 +135,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 		eval(fontInfo['hooks']['pre-overlays'])
 	}
 
-	drawOverlays(context, fontImage, overlays, overlayOverrides, 'pre-text')
+	drawOverlays(context, fontImage, overlays, overlayOverrides, scale, 'pre-text')
 
 
 	var fontOriginY=0
@@ -146,7 +147,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	first_line_origin = first(first_line_origin, originx)
 	fontManager.draw(mainFont, scale, originx, justify, justify_resolution, fontOriginY, first_line_justify, first_line_origin, explicit_origins, outputSize)
 
-	drawOverlays(context, fontImage, overlays, overlayOverrides, 'post-text')
+	drawOverlays(context, fontImage, overlays, overlayOverrides, scale, 'post-text')
 	
 }
 

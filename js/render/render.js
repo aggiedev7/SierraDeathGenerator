@@ -1,10 +1,12 @@
 const { first } = require('./util')
 const { FontManager } = require('./FontManager')
 const { drawOverlays, parseOverlays, resetOverlays } = require('./overlays')
+const { createCanvas } = require('canvas')
 
 function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = true, wordwrap_dryrun=false, wordwrap=true){
 	overlayOverrides={}
 	overlayNames= resetOverlays(fontInfo)
+
 	const context = canvas.getContext('2d')
 	if(fontInfo == null || baseImage == null){
 		return
@@ -121,12 +123,12 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 		var border_x = first(fontInfo.border.x, 0)
 		var border_y = first(fontInfo.border.y, 0)
 		var border_sides='ttttttttt'
+		const bordercanvas = createCanvas(1000, 1000)
 		if('hooks' in fontInfo && 'border' in fontInfo['hooks']){
 			// EVAL IS SAFE CODE, YES?
 			eval(fontInfo['hooks']['border'])
 		}
-		buildBorder(fontImage,fontInfo,bw,bh,border_sides)
-		var bordercanvas = document.querySelector('canvas#border')
+		buildBorder(bordercanvas, fontImage,fontInfo,bw,bh,border_sides)
 		context.drawImage(bordercanvas,0,0,bw,bh,border_x*scale,border_y*scale,bw*scale, bh*scale)
 	}
 
@@ -159,12 +161,12 @@ class BitmapFont {
 	}
 }
 
-function buildBorder(fontImage,fontInfo,w,h, border_sides){
+function buildBorder(bordercanvas, fontImage,fontInfo,w,h, border_sides){
 
 	function drawBorderPiece(x,y,piece){
 		bctx.drawImage(fontImage,piece.x,piece.y,piece.w,piece.h,x,y,piece.w,piece.h)
 	}
-	var bctx = document.querySelector('canvas#border').getContext('2d')
+	var bctx = bordercanvas.getContext('2d')
 	if(bctx.canvas.width == w && bctx.canvas.height == h && bctx._border_sides == border_sides){
 		return
 	}

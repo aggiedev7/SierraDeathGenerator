@@ -12,9 +12,9 @@ const parseJsonAsync = (jsonString) => {
 
 const canvas = createCanvas(1000, 1000)
 
-const loadImagePromise = loadImage('games/wea/wea-blank.png')
-const fontImagePromise = loadImage('games/wea/wea-font.png') 
-const jsonPromise = fsp.readFile('games/wea/wea.json').then(data => {
+const loadImagePromise = loadImage('games/cv2/cv2-blank.png')
+const fontImagePromise = loadImage('games/cv2/cv2-font.png') 
+const jsonPromise = fsp.readFile('games/cv2/cv2.json').then(data => {
     return parseJsonAsync(data)
 });
 

@@ -1,7 +1,9 @@
 const { first } = require('./util')
-const { FontManager} = require('./FontManager')
+const { FontManager } = require('./FontManager')
+const { drawOverlays, parseOverlays } = require('./overlays')
 
 function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = true, wordwrap_dryrun=false, wordwrap=true){
+	overlayOverrides={}
 	const context = canvas.getContext('2d')
 	if(fontInfo == null || baseImage == null){
 		return
@@ -45,8 +47,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	}
 	var originx = first(fontInfo.origin.x, 0)
 
-	//TODO: support overlays
-	//var overlays = parseOverlays(fontInfo)
+	var overlays = parseOverlays(fontInfo)
 
 	//var rawtext = document.querySelector("textarea#sourcetext").value
 
@@ -108,53 +109,11 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 		context.imageSmoothingEnabled = false
 	}
 
-	/*function drawOverlays(stage){
-		Object.keys(overlays).forEach(function (key) {
-			var adv = overlays[key]
-			if(adv.stage == stage){
-				context.globalCompositeOperation = adv.blend
-				var overlay_x = adv.x*scale, overlay_y = adv.y*scale;
-				var overlay_w = adv.w*scale, overlay_h = adv.h*scale
-				var source_x = adv.source.x, source_y = adv.source.y
-				var source_w = adv.w, source_h = adv.h
-				var source_image = fontImage
-
-				context.save()
-				if(adv.flip!==''){
-					context.translate(overlay_x, overlay_y)
-					overlay_x=overlay_y=0
-					if(adv.flip.toUpperCase().includes('H')){
-						overlay_x = -overlay_w
-						context.scale(-1, 1)
-					}
-					if(adv.flip.toUpperCase().includes('V')){
-						overlay_y = -overlay_h
-						context.scale(1, -1)
-					}
-				}
-				if(key in overlayOverrides){
-					source_image = overlayOverrides[key]
-					source_x = source_y = 0 
-					source_w = source_image.width
-					source_h = source_image.height
-				}
-				context.drawImage(
-					source_image,
-					source_x, source_y, source_w, source_h,
-					overlay_x,overlay_y,overlay_w,overlay_h
-				)
-				context.restore()
-			}
-		})
-		context.globalCompositeOperation = "source-over"
-	}*/
-
 	// Clear before drawing, as transparents might get overdrawn
 	context.clearRect(0, 0, canvas.width, canvas.height)
 	context.drawImage(baseImage, 0, 0, baseImage.width*scale, baseImage.height*scale)
 	
-	//TODO: support overlays
-	//drawOverlays('pre-border')
+	drawOverlays(context, fontImage, overlays, overlayOverrides, 'pre-border')
 
 	if('border' in fontInfo) {
 		var bw=outputSize.w,bh=outputSize.h
@@ -175,8 +134,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 		eval(fontInfo['hooks']['pre-overlays'])
 	}
 
-	//TODO: support overlays
-	//drawOverlays('pre-text')
+	drawOverlays(context, fontImage, overlays, overlayOverrides, 'pre-text')
 
 
 	var fontOriginY=0
@@ -188,51 +146,9 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	first_line_origin = first(first_line_origin, originx)
 	fontManager.draw(mainFont, scale, originx, justify, justify_resolution, fontOriginY, first_line_justify, first_line_origin, explicit_origins, outputSize)
 
-	//TODO: support overlays
-	//drawOverlays('post-text')
+	drawOverlays(context, fontImage, overlays, overlayOverrides, 'post-text')
 	
 }
-
-/*function parseOverlays(fontInfo){
-	var overlays = {}
-	if ('overlays' in fontInfo) {
-		for(var i=0;i<overlayNames.length;i++){
-			var oname=overlayNames[i]
-			var currentOverlay=fontInfo.overlays[oname]
-			if(currentOverlay.type=='slider'){
-				overlays[oname] = {
-					"name":sname,
-					"type":"slider",
-					"min":currentOverlay.min,
-					"max":currentOverlay.max,
-					"value":$('#overlay-'+oname).val()
-				}
-			}else{
-				var sname = $('#overlay-'+oname+' option:selected').val()
-				var adv=currentOverlay.options[sname]
-
-				overlays[oname] = {
-					"name":sname,
-					"type":"select",
-					"x":currentOverlay.x,
-					"y":currentOverlay.y,
-					"w":adv.w,
-					"h":adv.h,
-					"blend":first(currentOverlay['blend-mode'], 'source-over'),
-					"stage":first(currentOverlay.stage, "pre-text"),
-					"title":first(currentOverlay.title,sname),
-					"flip":first(adv.flip, currentOverlay.flip, ''),
-					"source":{
-						"x":adv.x,
-						"y":adv.y
-					},
-					"data":adv
-				}
-			}
-		}
-	}
-	return overlays
-}*/
 
 class BitmapFont {
 	constructor(info, image) {

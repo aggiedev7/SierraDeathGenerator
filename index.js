@@ -12,9 +12,9 @@ const parseJsonAsync = (jsonString) => {
 
 const canvas = createCanvas(1000, 1000)
 
-const loadImagePromise = loadImage('games/cv2/cv2-blank.png')
-const fontImagePromise = loadImage('games/cv2/cv2-font.png') 
-const jsonPromise = fsp.readFile('games/cv2/cv2.json').then(data => {
+const loadImagePromise = loadImage('games/g13/g13-blank.png')
+const fontImagePromise = loadImage('games/g13/g13-font.png') 
+const jsonPromise = fsp.readFile('games/g13/g13.json').then(data => {
     return parseJsonAsync(data)
 });
 
@@ -22,7 +22,7 @@ Promise.all([loadImagePromise, fontImagePromise, jsonPromise]).then((values) => 
     var fontInfo = values[2]
     var baseImage = values[0]
     var fontImage = values[1]
-    renderText(canvas, fontInfo, baseImage, fontImage, "hello", false)
+    renderText(canvas, fontInfo, baseImage, fontImage, "hello", {'font': 'computer'}, false)
    
 	console.log('<img src="' + canvas.toDataURL() + '" />')
   })

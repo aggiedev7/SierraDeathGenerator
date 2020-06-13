@@ -2,8 +2,13 @@ const { first } = require('./util')
 const { FontManager } = require('./FontManager')
 const { drawOverlays, parseOverlays, resetOverlays } = require('./overlays')
 const { createCanvas } = require('canvas')
+const { evalHook } = require('./evalhooks')
 
-function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = true, wordwrap_dryrun=false, wordwrap=true){
+function switchFont(newFont){
+	rawtext = '[' + newFont + ']' + rawtext
+}
+
+function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, options, scaled = true, wordwrap_dryrun=false, wordwrap=true){
 	overlayOverrides={}
 	overlayNames= resetOverlays(fontInfo)
 
@@ -13,7 +18,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	}
 
 	if('hooks' in fontInfo && 'pre-parse' in fontInfo['hooks']){
-		eval(fontInfo.hooks['pre-parse'])
+		eval(evalHook(fontInfo.hooks['pre-parse'], options))
 	}
 	if(!('null-character' in fontInfo)){
 		// Set a null character fallback if the JSON doesn't define one
@@ -50,7 +55,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	}
 	var originx = first(fontInfo.origin.x, 0)
 
-	var overlays = parseOverlays(fontInfo, overlayNames, {})
+	var overlays = parseOverlays(fontInfo, overlayNames, options)
 
 	//var rawtext = document.querySelector("textarea#sourcetext").value
 
@@ -59,7 +64,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 	}
 
 	if('hooks' in fontInfo && 'font' in fontInfo['hooks']){
-		eval(fontInfo.hooks.font)
+		eval(evalHook(fontInfo.hooks.font, options))
 	}
 
 	var fontManager = new FontManager(context, rawtext, fonts, fontInfo)
@@ -126,7 +131,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 		const bordercanvas = createCanvas(1000, 1000)
 		if('hooks' in fontInfo && 'border' in fontInfo['hooks']){
 			// EVAL IS SAFE CODE, YES?
-			eval(fontInfo['hooks']['border'])
+			eval(evalHook(fontInfo['hooks']['border'], options))
 		}
 		buildBorder(bordercanvas, fontImage,fontInfo,bw,bh,border_sides)
 		context.drawImage(bordercanvas,0,0,bw,bh,border_x*scale,border_y*scale,bw*scale, bh*scale)
@@ -134,7 +139,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 
 	if('hooks' in fontInfo && 'pre-overlays' in fontInfo['hooks']){
 		// EVAL IS SAFE CODE, YES?
-		eval(fontInfo['hooks']['pre-overlays'])
+		eval(evalHook(fontInfo['hooks']['pre-overlays'], options))
 	}
 
 	drawOverlays(context, fontImage, overlays, overlayOverrides, scale, 'pre-text')
@@ -144,7 +149,7 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, scaled = tr
 
 	if('hooks' in fontInfo && 'pre-text' in fontInfo['hooks']){
 		// EVAL IS SAFE CODE, YES?
-		eval(fontInfo['hooks']['pre-text'])
+		eval(evalHook(fontInfo['hooks']['pre-text'], options))
 	}
 	first_line_origin = first(first_line_origin, originx)
 	fontManager.draw(mainFont, scale, originx, justify, justify_resolution, fontOriginY, first_line_justify, first_line_origin, explicit_origins, outputSize)

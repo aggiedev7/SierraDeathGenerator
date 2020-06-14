@@ -15,7 +15,6 @@ function translateOverlayOptions(hook, options) {
             temparray = result.slice(i,i+2);
             newstr += result[i]
             newstr += "'" + options[result[i+1]] + "'"
-            console.log(temparray)
         }
         newstr += result[i]
         return newstr;

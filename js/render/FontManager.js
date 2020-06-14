@@ -1,4 +1,5 @@
 const { first } = require('./util')
+const LineBreak = require('linebreak');
 
 const glitch = false
 class FontManager{

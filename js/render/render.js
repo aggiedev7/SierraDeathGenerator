@@ -71,6 +71,9 @@ function renderText(canvas, fontInfo, baseImage, fontImage, rawtext, options, sc
 	if('wrap-width' in fontInfo && wordwrap){
 		fontManager.wordwrap(fontInfo['wrap-width'])
 	}
+	else {
+		fontManager.wordwrap(150)
+	}
 
 	if(wordwrap_dryrun){
 		return fontManager

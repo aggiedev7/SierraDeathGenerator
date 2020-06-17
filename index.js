@@ -1,33 +1,46 @@
 const { createCanvas, loadImage } = require('canvas')
 const { renderText } = require('./js/render/render')
 const fsp = require('fs').promises;
-const yargs = require('yargs').option('g', {
-  alias: 'game',
-  demandOption: false,
-  describe: 'abbreviated name of game to generate',
-  type: 'string'
-})
-.option('w', {
-  alias: 'wordwrap',
-  demandOption: false,
-  describe: 'if a game isnt provided, only pick from games that support wordwrap',
-  type: 'boolean'
-})
-.option('c', {
-  alias: 'channel',
-  demandOption: true,
-  describe: 'prefix of channel name to send image to',
-  type: 'string'
-})
-const argv = yargs.argv
 const { Client, MessageAttachment } = require('discord.js');
 
-const parseJsonAsync = (jsonString) => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(JSON.parse(jsonString))
-    })
+const argv = require('yargs')
+  .option('g', {
+    alias: 'game',
+    demandOption: false,
+    describe: 'abbreviated name of game to generate',
+    type: 'string'
   })
+  .option('w', {
+    alias: 'wordwrap',
+    demandOption: false,
+    describe: 'if a game isnt provided, only pick from games that support wordwrap',
+    type: 'boolean'
+  })
+  .option('c', {
+    alias: 'channel',
+    demandOption: true,
+    describe: 'prefix of channel name to send image to',
+    type: 'string'
+  })
+  .option('t', {
+    alias: 'text',
+    demandOption: false,
+    describe: 'text to render',
+    type: 'string'
+  }).argv
+
+async function run() {
+  games = await fsp.readdir('games');
+  [game, fontInfo] = await getGame(argv, games);
+  const options = getSelectedOptions(argv, getValidGameOptions(fontInfo))
+  const baseImagePath = 'games/' + game + '/' + game + '-blank.png'
+  const fontImagePath = 'games/' + game + '/' + game + '-font.png'
+
+  const [baseImage, fontImage] = await Promise.all([loadImage(baseImagePath), loadImage(fontImagePath)])
+  const imageCanvas = generateImage(argv.text, options, fontInfo, baseImage, fontImage)
+
+  const fileName = createFileName(game, options)
+  sendToDiscordChannel(argv.channel, imageCanvas, fileName)
 }
 
 function getGame(argv, games) {
@@ -48,97 +61,69 @@ function getRandomGame(games) {
 }
 
 function getRandomGameWithWordwrap(games) {
-  return getFontInfoForGame(getRandomGame(games)).then(([game, fontInfo]) => 
-  ('wrap-width' in fontInfo) ? [game, fontInfo] : getRandomGameWithWordwrap(games))
-  .catch(err => {
-    if (err.code  === 'ENOENT') {
-      getRandomGameWithWordwrap(games)
-    }
-    else {
-      throw err
-    }
-  })
-}
-
-function getFontInfoForGame(game) {
-  return fsp.readFile('games/' + game + '/' + game + '.json')
-  .then(parseJsonAsync)
-  .then(json => [game, json]);
-}
-
-async function run() {
-  games = await fsp.readdir('games');
-  [game, fontInfo] = await getGame(argv, games);
-
-  const [baseImage, fontImage] = await Promise.all([loadBaseImage(game), loadFontImage(game)])
-  const selectedOptions = getSelectedOptions(argv)
-  const options = buildOptions(selectedOptions, fontInfo)
-  const imageCanvas = generateImage(argv.text, options, fontInfo, baseImage, fontImage)
-
-  sendCanvasToChannel(imageCanvas, argv.channel, createFileName(game, options))
-}
-
-async function loadBaseImage(gameName) {
-  return loadImage('games/' + game + '/' + game + '-blank.png')
-}
-
-async function loadFontImage(gameName) {
-  return loadImage('games/' + game + '/' + game + '-font.png')
-}
-
-function sendCanvasToChannel(imageCanvas, channelName, imageName) {
-  const client = new Client();
-    client.on('ready', () => {
-      console.log(client.channels.cache.map(channel => channel.name))
-      const channel = client.channels.cache.find(channel => channel.name.startsWith(channelName))
-      if (!channel) {
-        throw 'Could not find channel with channel name'
+  return getFontInfoForGame(getRandomGame(games)).then(([game, fontInfo]) =>
+    ('wrap-width' in fontInfo) ? [game, fontInfo] : getRandomGameWithWordwrap(games))
+    .catch(err => {
+      if (err.code === 'ENOENT') {
+        getRandomGameWithWordwrap(games)
       }
-      const attachment = new MessageAttachment(imageCanvas.toBuffer(), imageName);
-      console.log('sending ' + imageName + ' to ' + channel.name)
-      channel.send('', attachment).finally(_ => client.destroy())
+      else {
+        throw err
+      }
     })
-    client.login(process.env.BOT_TOKEN)
+}
+
+async function getFontInfoForGame(game) {
+  const jsonString = await fsp.readFile('games/' + game + '/' + game + '.json');
+  const json = await parseJsonAsync(jsonString);
+  return [game, json];
+}
+
+const parseJsonAsync = (jsonString) => {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve(JSON.parse(jsonString))
+    })
+  })
 }
 
 function createFileName(game, options) {
   return game + '-' + Object.values(options).join("-") + '.png'
 }
 
-run()
+async function sendToDiscordChannel(channelName, imageCanvas, fileName) {
+  const client = new Client();
 
-/*fsp.readdir('games').then(games => getGame(argv, games)).then( ([game, fontInfo]) => {
-  const loadImagePromise = loadImage('games/' + game + '/' + game + '-blank.png')
-  const fontImagePromise = loadImage('games/' + game + '/' + game + '-font.png')
-
-  Promise.all([loadImagePromise, fontImagePromise]).then((values) => {
-    var baseImage = values[0]
-    var fontImage = values[1]
-    const selectedOptions = getSelectedOptions(argv)
-    const options = buildOptions(selectedOptions, fontInfo)
-    const imageCanvas = generateImage(text, options, fontInfo, baseImage, fontImage)
-    //fsp.writeFile('test.png', imageCanvas.toBuffer())
-
-    const client = new Client();
-    client.on('ready', () => {
-      const channel = client.channels.cache.get('666555950873706496')
-      const attachment = new MessageAttachment(imageCanvas.toBuffer(), 'test.png');
-      channel.send('', attachment).then(_ => client.destroy())
-    })
-    client.login(process.env.BOT_TOKEN)
+  client.once('ready', async () => {
+    try {
+      await sendCanvasToChannel(imageCanvas, channelName, fileName, client)
+    }
+    finally {
+      client.destroy()
+    }
   })
-})*/
 
+  client.login(process.env.BOT_TOKEN).catch(err => {
+    client.destroy()
+    throw err
+  })
+}
 
-function getSelectedOptions(argv) {
-  const selectedOptions = Object.assign({}, argv)
-  delete selectedOptions._
-  delete selectedOptions.$0
-  delete selectedOptions.g
-  delete selectedOptions.text
-  delete selectedOptions.channel
-  delete selectedOptions.wordwrap
-  return selectedOptions
+async function sendCanvasToChannel(imageCanvas, channelName, imageName, client) {
+  const channel = client.channels.cache.find(channel => channel.name.startsWith(channelName))
+  if (!channel) {
+    throw 'Could not find channel with channel name'
+  }
+  const attachment = new MessageAttachment(imageCanvas.toBuffer(), imageName);
+  console.log('sending ' + imageName + ' to ' + channel.name)
+  return await channel.send('', attachment)
+}
+
+function getSelectedOptions(argv, generatorOptions) {
+  return Object.fromEntries(Object.entries(generatorOptions).map(([name, possibleValues]) => {
+    const optionSelectedValue = name in argv ? argv[name] : selectRandomOption(possibleValues)
+    return [name, optionSelectedValue]
+  }))
 }
 
 function getValidGameOptions(fontInfo) {
@@ -155,23 +140,8 @@ function getValidGameOptions(fontInfo) {
   }
 }
 
-function buildOptions(argv, fontInfo) {
-  const unselectedOptions = randomizeUnselectedOptions(Object.keys(argv), getValidGameOptions(fontInfo))
-  return { ...argv, ...unselectedOptions }
-}
-
-function randomizeUnselectedOptions(providedOptions, options) {
-  const unselectedOptions = Object.keys(options).filter(x => !providedOptions.includes(x));
-  return Object.fromEntries(unselectedOptions.map(option => selectRandomOption(option, options)))
-}
-
-function selectRandomOption(option, options) {
-  const optionEntries = options[option]
-  return [option, optionEntries[Math.floor(Math.random() * optionEntries.length)]]
-}
-
-function generateImage() {
-
+function selectRandomOption(options) {
+  return options[Math.floor(Math.random() * options.length)]
 }
 
 function generateImage(text, options, fontInfo, baseImage, fontImage) {
@@ -179,3 +149,5 @@ function generateImage(text, options, fontInfo, baseImage, fontImage) {
   renderText(canvas, fontInfo, baseImage, fontImage, text, options, false)
   return canvas
 }
+
+run()

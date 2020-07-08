@@ -33,8 +33,9 @@ async function run() {
   games = await fsp.readdir('games');
   [game, fontInfo] = await getGame(argv, games);
   const options = getSelectedOptions(argv, getValidGameOptions(fontInfo))
-  const baseImagePath = 'games/' + game + '/' + game + '-blank.png'
-  const fontImagePath = 'games/' + game + '/' + game + '-font.png'
+  const gamePath = 'games/' + game + '/' + game
+  const baseImagePath = gamePath + '-blank.png'
+  const fontImagePath = gamePath + '-font.png'
 
   const [baseImage, fontImage] = await Promise.all([loadImage(baseImagePath), loadImage(fontImagePath)])
   const imageCanvas = generateImage(argv.text, options, fontInfo, baseImage, fontImage)
@@ -43,40 +44,47 @@ async function run() {
   sendToDiscordChannel(argv.channel, imageCanvas, fileName)
 }
 
-function getGame(argv, games) {
+async function getGame(name, games) {
   if ('g' in argv) {
-    return getFontInfoForGame(argv.g).then(([_, fontInfo]) => [argv.g, fontInfo])
+    const fontInfo = await getFontInfoForGame(argv.g)
+    return [argv.g, fontInfo]
   }
   else if ('wordwrap' in argv) {
-    return getRandomGameWithWordwrap(games)
+    return getWordwrapEnabledRandomGame(games)
   }
   else {
-    const game = getRandomGame(games)
-    return getFontInfoForGame(game).then(([_, fontInfo]) => [game, fontInfo])
+    return getRandomGame(games)
   }
 }
 
-function getRandomGame(games) {
+function getRandomGameName(games) {
   return games[Math.floor(Math.random() * games.length)]
 }
 
-function getRandomGameWithWordwrap(games) {
-  return getFontInfoForGame(getRandomGame(games)).then(([game, fontInfo]) =>
-    ('wrap-width' in fontInfo) ? [game, fontInfo] : getRandomGameWithWordwrap(games))
-    .catch(err => {
-      if (err.code === 'ENOENT') {
-        getRandomGameWithWordwrap(games)
-      }
-      else {
-        throw err
-      }
-    })
+async function getWordwrapEnabledRandomGame(games) {
+  const [game, fontInfo] = await getRandomGame(games)
+  return 'wrap-width' in fontInfo ? [game, fontInfo] : getWordwrapEnabledRandomGame(games)
+}
+
+async function getRandomGame(games) {
+  const gameName = getRandomGameName(games)
+  try {
+    const fontInfo = await getFontInfoForGame(gameName)
+    return [gameName, fontInfo]
+  }
+  catch (err) {
+    if (err.code === 'ENOENT') {
+      return await getRandomGame(games)
+    }
+    else {
+      throw err
+    }
+  }
 }
 
 async function getFontInfoForGame(game) {
   const jsonString = await fsp.readFile('games/' + game + '/' + game + '.json');
-  const json = await parseJsonAsync(jsonString);
-  return [game, json];
+  return await parseJsonAsync(jsonString);
 }
 
 const parseJsonAsync = (jsonString) => {
